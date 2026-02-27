@@ -1,0 +1,157 @@
+/* ─── Sidebar & Channel List ──────────────────────────────────── */
+
+.sidebar-glass {
+    background: linear-gradient(180deg,
+            rgba(255, 255, 255, 0.055) 0%,
+            rgba(255, 255, 255, 0.030) 100%);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-right: 1px solid var(--glass-border);
+    box-shadow:
+        inset -1px 0 0 rgba(255, 255, 255, 0.05),
+        4px 0 32px rgba(0, 0, 0, 0.4);
+}
+
+/* ─── Search Bar ─── */
+.search-glass {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    color: var(--text-primary);
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+    width: 100%;
+    padding: 9px 14px 9px 36px;
+    outline: none;
+}
+
+.search-glass:focus {
+    border-color: var(--accent);
+    background: rgba(108, 99, 255, 0.08);
+    box-shadow: 0 0 0 3px var(--accent-soft),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.search-glass::placeholder {
+    color: var(--text-muted);
+}
+
+/* ─── Channel Items ─── */
+.channel-item-glass {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    margin: 1px 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    position: relative;
+    transition:
+        background 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.15s ease;
+}
+
+.channel-item-glass:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border);
+    transform: translateX(2px);
+}
+
+.channel-item-glass.is-playing {
+    background: linear-gradient(135deg,
+            rgba(108, 99, 255, 0.18) 0%,
+            rgba(108, 99, 255, 0.08) 100%);
+    border-color: rgba(108, 99, 255, 0.40);
+    box-shadow: 0 0 20px rgba(108, 99, 255, 0.12);
+}
+
+/* Glowing left bar on active channel */
+.channel-item-glass.is-playing::before {
+    content: '';
+    position: absolute;
+    left: -1px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 65%;
+    background: var(--accent);
+    border-radius: 0 3px 3px 0;
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.channel-item-glass.is-selected {
+    background: var(--glass-bg-active);
+    border-color: var(--glass-border-bright);
+}
+
+/* ─── Channel Logo ─── */
+.channel-logo-glass {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 3px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.channel-logo-placeholder {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(108, 99, 255, 0.2), rgba(0, 212, 255, 0.1));
+    border: 1px solid rgba(108, 99, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+}
+
+/* ─── Stats Row ─── */
+.stats-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px 6px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.stats-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    font-weight: 500;
+}
+
+.stats-divider {
+    color: rgba(255, 255, 255, 0.15);
+}
+
+/* ─── Scrollbar ─── */
+.channel-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+
+.channel-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.channel-scroll::-webkit-scrollbar-thumb {
+    background: var(--scrollbar);
+    border-radius: 4px;
+}
+
+.channel-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-hover);
+}

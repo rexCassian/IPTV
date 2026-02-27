@@ -1,36 +1,116 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Coriolis IPTV
 
-## Getting Started
+Production-ready IPTV desktop application for Windows with 10,000+ channel support.
 
-First, run the development server:
+## Features
+
+- 🎬 **Dual Player Engine**: mpv (HLS/m3u8) + mpegts.js (MPEG-TS) auto-switching
+- 📺 **10K+ Channel Support**: Virtual scrolling with 60 FPS
+- 📖 **EPG Program Guide**: XMLTV support with SQLite storage
+- 🔍 **Fuzzy Search**: Instant channel search across 10K+ channels
+- ⌨️ **Keyboard Shortcuts**: Full keyboard navigation
+- 🎨 **Modern UI**: Dark theme, custom title bar, Framer Motion animations
+- ⚡ **Windows Optimized**: D3D11VA hardware decode, DirectX GPU rendering
+
+## Requirements
+
+- **Windows 10/11** (64-bit)
+- **Node.js 18+** and **npm 9+**
+- **Visual Studio Build Tools** (for `better-sqlite3` native compilation)
+  - Install via: `npm install --global windows-build-tools` (admin PowerShell)
+  - Or download from: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+- **mpv.exe** (optional, for HLS playback — MPEG-TS works without it)
+
+## Quick Start
+
+### 1. Install Dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Place mpv.exe (Optional)
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Download mpv for Windows from https://mpv.io/installation/ and place `mpv.exe` in:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+iptv/resources/mpv.exe
+```
 
-## Learn More
+> Without mpv.exe, the app will still work but only with MPEG-TS streams via the built-in HTML5 player.
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Start Development
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm run electron:dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+This starts both Vite dev server and Electron simultaneously.
 
-## Deploy on Vercel
+### 4. Build for Production
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run build
+npm start
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## First Run
+
+1. Open the app → Click the **⚙️ settings icon** or press `Ctrl+,`
+2. Go to **Sources** tab → Enter your M3U/M3U8 playlist URL → Click **Add**
+3. Click the **download icon** next to the source to load channels
+4. Select a channel from the sidebar to start watching
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `↑ / ↓` | Navigate channels |
+| `Enter` | Play selected channel |
+| `F` | Toggle fullscreen |
+| `M` | Toggle mute |
+| `+ / -` | Volume up/down |
+| `Ctrl+F` | Focus search |
+| `Escape` | Exit fullscreen / Close modal |
+| `Ctrl+,` | Open settings |
+| `Ctrl+E` | Open EPG guide |
+| `F5` | Refresh EPG |
+| `Ctrl+D` | Toggle favorite |
+
+## Architecture
+
+```
+electron/          → Main process (Node.js)
+  main.ts          → Window, tray, security
+  mpvManager.ts    → mpv IPC socket control
+  m3uParser.ts     → M3U playlist parsing
+  epgManager.ts    → EPG fetch & XMLTV parse
+  epgDatabase.ts   → SQLite EPG storage
+
+src/               → Renderer process (React)
+  components/      → UI components
+  store/           → Zustand state management
+  hooks/           → React hooks
+  utils/           → Utilities
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Shell | Electron 28 |
+| UI | React 18 + TypeScript 5 |
+| Build | Vite |
+| Styling | Tailwind CSS |
+| State | Zustand |
+| Virtual Scroll | @tanstack/react-virtual |
+| Animation | Framer Motion |
+| HLS Player | mpv (external binary) |
+| TS Player | mpegts.js (in-browser) |
+| EPG Storage | better-sqlite3 |
+| Settings | electron-store |
+| Search | Fuse.js |
+
+## License
+
+Private — All rights reserved.

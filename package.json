@@ -1,20 +1,83 @@
 {
-  "name": "iptv",
-  "version": "0.1.0",
+  "name": "coriolis-iptv",
+  "version": "2.0.0",
+  "author": "Coriolis <admin@coriolis.com>",
   "private": true,
+  "description": "Production-ready IPTV desktop application for Windows",
+  "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "start": "vite build && electron .",
+    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "package": "npm run build && electron-builder --dir",
+    "make": "npm run build && electron-builder --win -c.extraMetadata.main=dist-electron/main.js",
+    "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "@radix-ui/react-context-menu": "^2.2.2",
+    "@radix-ui/react-dialog": "^1.1.2",
+    "@radix-ui/react-tooltip": "^1.1.3",
+    "@tanstack/react-query": "^5.60.0",
+    "@tanstack/react-virtual": "^3.10.9",
+    "date-fns": "^4.1.0",
+    "fast-xml-parser": "^4.5.0",
+    "framer-motion": "^11.11.0",
+    "fuse.js": "^7.0.0",
+    "ky": "^1.7.2",
+    "lucide-react": "^0.460.0",
+    "mpegts.js": "^1.8.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "sql.js": "^1.11.0",
+    "zustand": "^5.0.1"
   },
   "devDependencies": {
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6"
+    "@electron-forge/cli": "^7.5.0",
+    "@electron-forge/maker-squirrel": "^7.5.0",
+    "@electron-forge/maker-zip": "^7.5.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@types/sql.js": "^1.4.9",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^26.8.1",
+    "icon-gen": "^5.0.0",
+    "png-to-ico": "^3.0.1",
+    "postcss": "^8.4.49",
+    "sharp": "^0.34.5",
+    "tailwindcss": "^3.4.15",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.0",
+    "vite-plugin-electron": "^0.28.8",
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.coriolis.iptv",
+    "productName": "Coriolis IPTV",
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Coriolis IPTV"
+    },
+    "extraResources": [
+      {
+        "from": "resources/",
+        "to": "resources/"
+      }
+    ],
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ]
   }
 }

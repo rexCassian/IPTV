@@ -1,0 +1,31 @@
+/* ─── Deep Space Glassmorphism — CSS Variables ─────────────────── */
+:root {
+    /* Background */
+    --bg-base: #080B14;
+    --bg-deep: #050810;
+
+    /* Glass surfaces */
+    --glass-bg: rgba(255, 255, 255, 0.04);
+    --glass-bg-hover: rgba(255, 255, 255, 0.07);
+    --glass-bg-active: rgba(255, 255, 255, 0.10);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-border-bright: rgba(255, 255, 255, 0.15);
+
+    /* Accent — electric violet */
+    --accent: #6C63FF;
+    --accent-glow: rgba(108, 99, 255, 0.35);
+    --accent-soft: rgba(108, 99, 255, 0.15);
+
+    /* Secondary accent — cold cyan */
+    --accent2: #00D4FF;
+    --accent2-glow: rgba(0, 212, 255, 0.25);
+
+    /* Text */
+    --text-primary: rgba(255, 255, 255, 0.92);
+    --text-secondary: rgba(255, 255, 255, 0.50);
+    --text-muted: rgba(255, 255, 255, 0.28);
+
+    /* Scrollbar */
+    --scrollbar: rgba(255, 255, 255, 0.08);
+    --scrollbar-hover: rgba(108, 99, 255, 0.5);
+}
