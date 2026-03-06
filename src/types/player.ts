@@ -1,4 +1,4 @@
-export type PlayerEngine = 'mpv' | 'mpegts' | 'none';
+export type PlayerEngine = 'mpv' | 'mpegts' | 'mp4' | 'none';
 
 export type PlayerStatus = 'idle' | 'loading' | 'playing' | 'paused' | 'buffering' | 'error';
 

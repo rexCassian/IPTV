@@ -67,7 +67,7 @@ class JsonStore {
     }
 
     get<T = StoreValue>(key: string): T {
-        return (this.data[key] ?? (defaults as Record<string, StoreValue>)[key]) as T;
+        return (this.data[key] ?? (defaults as unknown as Record<string, StoreValue>)[key]) as unknown as T;
     }
 
     set(key: string, value: StoreValue): void {

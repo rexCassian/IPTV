@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import Fuse from 'fuse.js';
 import type { Channel, ChannelFilter } from '../types/channel';
 import type { MainTab } from '../types/content';
-import { groupSeriesByShow } from '../utils/seriesParser';
+import { groupSeriesByShow, parseSeriesName } from '../utils/seriesParser';
 import type { SeriesGroup } from '../types/content';
 
 interface ChannelStore {
@@ -38,6 +38,7 @@ interface ChannelStore {
     moveSelection: (delta: number) => void;
     setFavorites: (ids: string[]) => void;
     toggleFavorite: (id: string) => void;
+    toggleFavoriteAsync: (id: string) => Promise<boolean>;
     applyFilters: () => void;
     setActiveMainTab: (tab: MainTab) => void;
 }
@@ -136,12 +137,21 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
 
     setFavorites: (ids) => set({ favorites: new Set(ids) }),
 
-    toggleFavorite: (id) =>
+    toggleFavorite: (id) => {
         set((state) => {
             const next = new Set(state.favorites);
             next.has(id) ? next.delete(id) : next.add(id);
             return { favorites: next };
-        }),
+        });
+        get().applyFilters();
+    },
+
+    toggleFavoriteAsync: async (id) => {
+        // Assume electron API is available asynchronously
+        const isFav = await window.electronAPI.favorites.toggle(id);
+        get().toggleFavorite(id);
+        return isFav;
+    },
 
     applyFilters: () => {
         const { channels, filter, fuseInstance, favorites, activeMainTab,
@@ -153,14 +163,31 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
                 activeMainTab === 'series' ? seriesChannels :
                     liveChannels;
 
-        // Search — search across ALL channels for cross-tab results
+        // Search
         if (filter.search && fuseInstance) {
-            source = fuseInstance.search(filter.search).map((r) => r.item);
+            const rawResults = fuseInstance.search(filter.search).map((r) => r.item);
+            source = rawResults.filter((ch) => {
+                const ct = (ch as any).contentType;
+                if (activeMainTab === 'movie') return ct === 'movie';
+                if (activeMainTab === 'series') return ct === 'series';
+                return ct !== 'movie' && ct !== 'series';
+            });
         }
 
         if (filter.group) source = source.filter((ch) => ch.group === filter.group);
         if (filter.country) source = source.filter((ch) => ch.country === filter.country);
-        if (filter.favorites) source = source.filter((ch) => favorites.has(ch.id));
+        if (filter.favorites) {
+            if (activeMainTab === 'series') {
+                // If it's a series, check if the entire series is favorited
+                source = source.filter((ch) => {
+                    const info = parseSeriesName(ch.name);
+                    const key = info ? info.showName : ch.name;
+                    return favorites.has(`series_${key}`);
+                });
+            } else {
+                source = source.filter((ch) => favorites.has(ch.id));
+            }
+        }
 
         set({ filteredChannels: source });
     },

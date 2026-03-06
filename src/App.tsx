@@ -23,6 +23,31 @@ export default function App() {
         loadSettings();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Sync native fullscreen state with UI store (Electron IPC + browser API)
+    useEffect(() => {
+        let unsubElectron: (() => void) | undefined;
+        if (window.electronAPI?.window?.onFullscreenChanged) {
+            unsubElectron = window.electronAPI.window.onFullscreenChanged((fs: boolean) => {
+                if (useUiStore.getState().isFullscreen !== fs) {
+                    useUiStore.setState({ isFullscreen: fs });
+                }
+            });
+        }
+
+        const handleBrowserFs = () => {
+            const isFs = document.fullscreenElement != null;
+            if (useUiStore.getState().isFullscreen !== isFs) {
+                useUiStore.setState({ isFullscreen: isFs });
+            }
+        };
+        document.addEventListener('fullscreenchange', handleBrowserFs);
+
+        return () => {
+            if (unsubElectron) unsubElectron();
+            document.removeEventListener('fullscreenchange', handleBrowserFs);
+        };
+    }, []);
+
     // Auto-load first M3U source on startup
     useEffect(() => {
         if (m3uSources.length > 0) {
@@ -63,12 +88,12 @@ export default function App() {
     });
 
     return (
-        <div className="flex flex-col h-screen bg-dark-950 text-white overflow-hidden">
+        <div className="flex flex-col h-screen w-full bg-dark-950 text-white overflow-hidden">
             {/* Title Bar */}
             {!isFullscreen && <TitleBar />}
 
             {/* Main Layout */}
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 w-full overflow-hidden relative">
                 {/* Sidebar */}
                 {!isFullscreen && <Sidebar />}
 

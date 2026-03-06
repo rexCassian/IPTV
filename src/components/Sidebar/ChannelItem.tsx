@@ -83,18 +83,27 @@ export const ChannelItem = memo(
                 <button
                     onClick={handleFavClick}
                     style={{
-                        padding: 4,
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
+                        padding: 6,
+                        borderRadius: '50%',
+                        background: isFavorite ? 'rgba(251,191,36,0.15)' : 'transparent',
                         color: isFavorite ? '#FBBF24' : 'var(--text-muted)',
-                        opacity: isFavorite ? 1 : 0,
-                        flexShrink: 0,
-                        transition: 'opacity 0.15s',
+                        cursor: 'pointer',
+                        border: '1px solid',
+                        borderColor: isFavorite ? 'rgba(251,191,36,0.3)' : 'transparent',
+                        transition: 'all 0.2s',
+                        marginRight: 4,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}
-                    className="group-hover-show"
+                    onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = isFavorite ? 'rgba(251,191,36,0.25)' : 'rgba(255,255,255,0.06)';
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = isFavorite ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = isFavorite ? 'rgba(251,191,36,0.15)' : 'transparent';
+                        (e.currentTarget as HTMLButtonElement).style.borderColor = isFavorite ? 'rgba(251,191,36,0.3)' : 'transparent';
+                    }}
                 >
-                    <Star size={12} fill={isFavorite ? 'currentColor' : 'none'} />
+                    <Star size={14} fill={isFavorite ? 'currentColor' : 'none'} />
                 </button>
             </div>
         );

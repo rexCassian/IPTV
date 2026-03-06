@@ -15,6 +15,14 @@ const electronAPI = {
       const handler = (_event, maximized) => callback(maximized);
       electron.ipcRenderer.on("window:maximized-changed", handler);
       return createEventUnsubscriber("window:maximized-changed", handler);
+    },
+    toggleFullscreen: () => electron.ipcRenderer.send("window:toggle-fullscreen"),
+    setFullscreen: (fullscreen) => electron.ipcRenderer.send("window:set-fullscreen", fullscreen),
+    isFullscreen: () => electron.ipcRenderer.invoke("window:is-fullscreen"),
+    onFullscreenChanged: (callback) => {
+      const handler = (_event, fullscreen) => callback(fullscreen);
+      electron.ipcRenderer.on("window:fullscreen-changed", handler);
+      return createEventUnsubscriber("window:fullscreen-changed", handler);
     }
   },
   player: {
@@ -76,6 +84,9 @@ const electronAPI = {
   },
   stream: {
     check: (url) => electron.ipcRenderer.invoke("stream:check", url)
+  },
+  proxy: {
+    getPort: () => electron.ipcRenderer.invoke("proxy:get-port")
   }
 };
 electron.contextBridge.exposeInMainWorld("electronAPI", electronAPI);

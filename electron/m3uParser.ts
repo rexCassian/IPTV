@@ -109,7 +109,6 @@ export class M3uParser {
                         country: currentInfo.country || '',
                         language: currentInfo.language || '',
                         streamType: this.detectStreamType(url),
-                        // ─── THE FIX: classify every channel here ───────────
                         contentType: classifyGroup(group),
                     };
                     channels.push(channel);
@@ -128,6 +127,7 @@ export class M3uParser {
     private parseExtInf(line: string): Partial<Channel> {
         const info: Partial<Channel> = {};
 
+        // Extract attributes from tvg-* tags
         const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
         if (logoMatch) info.logo = logoMatch[1];
 
@@ -140,8 +140,13 @@ export class M3uParser {
         const languageMatch = line.match(/tvg-language="([^"]*)"/i);
         if (languageMatch) info.language = languageMatch[1];
 
-        const nameMatch = line.match(/,\s*(.+)$/);
-        if (nameMatch) info.name = nameMatch[1].trim();
+        // ─── FIX: Channel name is ALWAYS the text after the LAST comma ───
+        // #EXTINF:-1 tvg-id="..." tvg-logo="..." group-title="...",Channel Name Here
+        // Using split(',').slice(-1)[0] guarantees we get only the name part,
+        // never the attributes before the comma.
+        const parts = line.split(',');
+        const name = parts.length > 1 ? parts.slice(1).join(',').trim() : '';
+        if (name) info.name = name;
 
         return info;
     }

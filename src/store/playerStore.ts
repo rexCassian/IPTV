@@ -40,7 +40,12 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
 
     setEngine: (engine) => set({ engine }),
 
-    setStatus: (status) => set({ status, errorMessage: status === 'error' ? undefined : null }),
+    setStatus: (status) => set((state) => ({
+        status,
+        // Hata olmayan durumlarda errorMessage'ı temizle
+        // Ama 'error' status'unda mevcut errorMessage'a dokunma
+        errorMessage: status !== 'error' ? null : state.errorMessage,
+    })),
 
     setUrl: (url) => set({ url }),
 
@@ -50,7 +55,13 @@ export const usePlayerStore = create<PlayerStore>((set) => ({
 
     toggleMute: () => set((state) => ({ muted: !state.muted })),
 
-    setError: (message) => set({ errorMessage: message, status: message ? 'error' : 'idle' }),
+    setError: (message) => set((state) => ({
+        errorMessage: message,
+        // setError çağrılınca status'a DOKUNMA
+        // Status zaten Mp4Player/MpegtsPlayer tarafından yönetiliyor
+        // Sadece mesaj yoksa ve status error'sa idle'a çek
+        status: !message && state.status === 'error' ? 'idle' : state.status,
+    })),
 
     setBuffering: (percent) => set({ bufferPercent: percent, status: percent < 100 ? 'buffering' : 'playing' }),
 

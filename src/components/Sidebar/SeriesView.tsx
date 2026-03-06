@@ -1,6 +1,6 @@
 import React, { memo, useState, useRef, useCallback, useMemo } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronLeft, ChevronRight, Tv, Play } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Tv, Play, Star } from 'lucide-react';
 import { useChannelStore } from '../../store/channelStore';
 import { playChannel } from '../../utils/playerActions';
 import { parseSeriesName } from '../../utils/seriesParser';
@@ -10,19 +10,28 @@ import type { Channel } from '../../types/channel';
 type NavLevel = 'shows' | 'seasons' | 'episodes';
 
 export const SeriesView = memo(function SeriesView() {
-    const { seriesGroups, filter } = useChannelStore();
+    const { seriesGroups, filter, favorites, toggleFavoriteAsync } = useChannelStore();
     const [level, setLevel] = useState<NavLevel>('shows');
     const [selectedShow, setSelectedShow] = useState<SeriesGroup | null>(null);
     const [selectedSeason, setSelectedSeason] = useState<number | null>(null);
 
     // ─── Search filtering on seriesGroups by showName ───
     const filteredShows = useMemo(() => {
-        if (!filter.search) return seriesGroups;
-        const q = filter.search.toLowerCase();
-        return seriesGroups.filter((s) =>
-            s.showName.toLowerCase().includes(q)
-        );
-    }, [seriesGroups, filter.search]);
+        let result = seriesGroups;
+        if (filter.favorites) {
+            result = result.filter((s) => favorites.has(`series_${s.showName}`));
+        }
+        if (filter.search) {
+            const q = filter.search.toLowerCase();
+            result = result.filter((s) => s.showName.toLowerCase().includes(q));
+        }
+        return result;
+    }, [seriesGroups, filter.search, filter.favorites, favorites]);
+
+    const handleToggleFav = useCallback((e: React.MouseEvent, showName: string) => {
+        e.stopPropagation();
+        toggleFavoriteAsync(`series_${showName}`);
+    }, [toggleFavoriteAsync]);
 
     const handleShowClick = useCallback((show: SeriesGroup) => {
         setSelectedShow(show);
@@ -86,7 +95,7 @@ export const SeriesView = memo(function SeriesView() {
 
             {/* Content */}
             <div style={{ flex: 1, overflow: 'hidden' }}>
-                {level === 'shows' && <ShowsList shows={filteredShows} onSelect={handleShowClick} />}
+                {level === 'shows' && <ShowsList shows={filteredShows} onSelect={handleShowClick} favorites={favorites} onToggleFav={handleToggleFav} />}
                 {level === 'seasons' && selectedShow && (
                     <SeasonsList show={selectedShow} onSelect={handleSeasonClick} />
                 )}
@@ -100,8 +109,8 @@ export const SeriesView = memo(function SeriesView() {
 
 /* ── Level 1: Shows list (virtual scroll) ── */
 const ShowsList = memo(function ShowsList({
-    shows, onSelect,
-}: { shows: SeriesGroup[]; onSelect: (s: SeriesGroup) => void }) {
+    shows, onSelect, favorites, onToggleFav
+}: { shows: SeriesGroup[]; onSelect: (s: SeriesGroup) => void; favorites: Set<string>; onToggleFav: (e: React.MouseEvent, showName: string) => void }) {
     const parentRef = useRef<HTMLDivElement>(null);
     const virtualizer = useVirtualizer({
         count: shows.length,
@@ -127,6 +136,7 @@ const ShowsList = memo(function ShowsList({
                 {virtualizer.getVirtualItems().map((vRow) => {
                     const show = shows[vRow.index];
                     const seasonCount = Object.keys(show.seasons).length;
+                    const isFavorite = favorites.has(`series_${show.showName}`);
                     return (
                         <div key={vRow.key} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: vRow.size, transform: `translateY(${vRow.start}px)` }}>
                             <button
@@ -162,6 +172,33 @@ const ShowsList = memo(function ShowsList({
                                         {seasonCount > 1 ? `${seasonCount} Sezon · ` : ''}{show.totalEpisodes} bölüm
                                     </p>
                                 </div>
+
+                                {/* Favorite trigger */}
+                                <button
+                                    onClick={(e) => onToggleFav(e, show.showName)}
+                                    style={{
+                                        padding: 6,
+                                        borderRadius: '50%',
+                                        background: isFavorite ? 'rgba(251,191,36,0.15)' : 'transparent',
+                                        color: isFavorite ? '#FBBF24' : 'var(--text-muted)',
+                                        cursor: 'pointer',
+                                        border: '1px solid',
+                                        borderColor: isFavorite ? 'rgba(251,191,36,0.3)' : 'transparent',
+                                        transition: 'all 0.2s',
+                                        marginRight: 4,
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        (e.currentTarget as HTMLButtonElement).style.background = isFavorite ? 'rgba(251,191,36,0.25)' : 'rgba(255,255,255,0.06)';
+                                        (e.currentTarget as HTMLButtonElement).style.borderColor = isFavorite ? 'rgba(251,191,36,0.5)' : 'rgba(255,255,255,0.1)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        (e.currentTarget as HTMLButtonElement).style.background = isFavorite ? 'rgba(251,191,36,0.15)' : 'transparent';
+                                        (e.currentTarget as HTMLButtonElement).style.borderColor = isFavorite ? 'rgba(251,191,36,0.3)' : 'transparent';
+                                    }}
+                                >
+                                    <Star size={14} fill={isFavorite ? 'currentColor' : 'none'} />
+                                </button>
 
                                 <ChevronRight size={14} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                             </button>

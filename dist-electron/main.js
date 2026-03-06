@@ -706,7 +706,6 @@ class M3uParser {
             country: currentInfo.country || "",
             language: currentInfo.language || "",
             streamType: this.detectStreamType(url2),
-            // ─── THE FIX: classify every channel here ───────────
             contentType: classifyGroup(group)
           };
           channels.push(channel);
@@ -729,8 +728,9 @@ class M3uParser {
     if (countryMatch) info.country = countryMatch[1];
     const languageMatch = line.match(/tvg-language="([^"]*)"/i);
     if (languageMatch) info.language = languageMatch[1];
-    const nameMatch = line.match(/,\s*(.+)$/);
-    if (nameMatch) info.name = nameMatch[1].trim();
+    const parts = line.split(",");
+    const name = parts.length > 1 ? parts.slice(1).join(",").trim() : "";
+    if (name) info.name = name;
     return info;
   }
   detectStreamType(url2) {
@@ -4332,7 +4332,7 @@ function registerIpcHandlers(mainWindow) {
   channelMatcher = new ChannelMatcher();
   electron.ipcMain.handle("player:play", async (_event, url2, streamType) => {
     try {
-      if (streamType === "hls" || streamType === "mpv") {
+      if (streamType !== "mpegts") {
         await mpvManager.play(url2);
       }
       mainWindow.webContents.send("player:state-changed", { playing: true, url: url2, streamType });
@@ -4448,9 +4448,132 @@ function registerIpcHandlers(mainWindow) {
     epgDatabase == null ? void 0 : epgDatabase.close();
   });
 }
+class StreamProxy {
+  constructor() {
+    __publicField(this, "server", null);
+    __publicField(this, "port", 0);
+  }
+  getPort() {
+    return this.port;
+  }
+  getProxyUrl(originalUrl) {
+    return `http://127.0.0.1:${this.port}/stream?url=${encodeURIComponent(originalUrl)}`;
+  }
+  start() {
+    return new Promise((resolve, reject) => {
+      this.server = http.createServer((req, res) => {
+        this.handleRequest(req, res);
+      });
+      this.server.listen(0, "127.0.0.1", () => {
+        const addr = this.server.address();
+        this.port = addr.port;
+        console.log(`[StreamProxy] Listening on http://127.0.0.1:${this.port}`);
+        resolve(this.port);
+      });
+      this.server.on("error", (err) => {
+        console.error("[StreamProxy] Server error:", err);
+        reject(err);
+      });
+    });
+  }
+  stop() {
+    var _a;
+    (_a = this.server) == null ? void 0 : _a.close();
+    this.server = null;
+  }
+  handleRequest(req, res) {
+    const parsed = new url.URL(req.url || "/", `http://127.0.0.1:${this.port}`);
+    const targetUrl = parsed.searchParams.get("url");
+    if (!targetUrl) {
+      res.writeHead(400, { "Content-Type": "text/plain" });
+      res.end("Missing url parameter");
+      return;
+    }
+    let target;
+    try {
+      target = new url.URL(targetUrl);
+    } catch {
+      res.writeHead(400, { "Content-Type": "text/plain" });
+      res.end("Invalid url parameter");
+      return;
+    }
+    const isHttps = target.protocol === "https:";
+    const requestModule = isHttps ? https : http;
+    const origin = `${target.protocol}//${target.host}`;
+    const proxyHeaders = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0",
+      "Accept": "*/*",
+      "Connection": "keep-alive",
+      "Referer": origin + "/",
+      "Origin": origin
+    };
+    if (req.headers.range) {
+      proxyHeaders["Range"] = req.headers.range;
+    }
+    const options = {
+      hostname: target.hostname,
+      port: target.port || (isHttps ? 443 : 80),
+      path: target.pathname + target.search,
+      method: "GET",
+      headers: proxyHeaders,
+      timeout: 3e4,
+      rejectUnauthorized: false
+    };
+    const proxyReq = requestModule.request(options, (proxyRes) => {
+      if (proxyRes.statusCode && proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+        const redirectUrl = proxyRes.headers.location;
+        const newParsed = new url.URL(req.url || "/", `http://127.0.0.1:${this.port}`);
+        newParsed.searchParams.set("url", redirectUrl);
+        req.url = newParsed.pathname + newParsed.search;
+        this.handleRequest(req, res);
+        proxyRes.destroy();
+        return;
+      }
+      const responseHeaders = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Range",
+        "Access-Control-Expose-Headers": "Content-Range, Content-Length, Accept-Ranges"
+      };
+      if (proxyRes.headers["content-type"]) {
+        responseHeaders["Content-Type"] = proxyRes.headers["content-type"];
+      }
+      if (proxyRes.headers["content-length"]) {
+        responseHeaders["Content-Length"] = proxyRes.headers["content-length"];
+      }
+      if (proxyRes.headers["content-range"]) {
+        responseHeaders["Content-Range"] = proxyRes.headers["content-range"];
+      }
+      if (proxyRes.headers["accept-ranges"]) {
+        responseHeaders["Accept-Ranges"] = proxyRes.headers["accept-ranges"];
+      }
+      res.writeHead(proxyRes.statusCode || 200, responseHeaders);
+      proxyRes.pipe(res);
+    });
+    proxyReq.on("error", (err) => {
+      console.error("[StreamProxy] Request error:", err.message);
+      if (!res.headersSent) {
+        res.writeHead(502, { "Content-Type": "text/plain" });
+        res.end(`Proxy error: ${err.message}`);
+      }
+    });
+    proxyReq.on("timeout", () => {
+      proxyReq.destroy();
+      if (!res.headersSent) {
+        res.writeHead(504, { "Content-Type": "text/plain" });
+        res.end("Proxy timeout");
+      }
+    });
+    req.on("close", () => {
+      proxyReq.destroy();
+    });
+    proxyReq.end();
+  }
+}
+electron.app.commandLine.appendSwitch("enable-features", "AudioTrackList");
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = "true";
 exports.mainWindow = null;
 let tray = null;
+const streamProxy = new StreamProxy();
 const WINDOW_STATE_DEFAULTS = {
   width: 1400,
   height: 900,
@@ -4480,11 +4603,28 @@ function createWindow() {
   electron.session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
     const url2 = details.url;
     if (!url2.startsWith("http://localhost") && !url2.startsWith("https://localhost") && !url2.startsWith("http://127.0.0.1") && !url2.includes("vite")) {
-      details.requestHeaders["User-Agent"] = "VLC/3.0.20 LibVLC/3.0.20";
+      details.requestHeaders["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0";
       details.requestHeaders["Connection"] = "keep-alive";
       details.requestHeaders["Accept"] = "*/*";
+      try {
+        const parsed = new URL(url2);
+        const origin = `${parsed.protocol}//${parsed.host}`;
+        details.requestHeaders["Referer"] = origin + "/";
+        details.requestHeaders["Origin"] = origin;
+      } catch {
+      }
     }
     callback({ requestHeaders: details.requestHeaders });
+  });
+  electron.session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        "Content-Security-Policy": [
+          "default-src 'self' 'unsafe-inline' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; media-src 'self' blob: http: https:; img-src 'self' data: blob: http: https:; connect-src 'self' ws: wss: http: https:;"
+        ]
+      }
+    });
   });
   exports.mainWindow.webContents.setWindowOpenHandler(({ url: url2 }) => {
     electron.shell.openExternal(url2);
@@ -4503,8 +4643,28 @@ function createWindow() {
     exports.mainWindow.loadFile(path.join(__dirname, "../dist/index.html"));
   }
   exports.mainWindow.once("ready-to-show", () => {
-    var _a;
+    var _a, _b;
     (_a = exports.mainWindow) == null ? void 0 : _a.show();
+    if (isDev) {
+      (_b = exports.mainWindow) == null ? void 0 : _b.webContents.openDevTools();
+    }
+  });
+  exports.mainWindow.webContents.on("before-input-event", (_event, input) => {
+    var _a, _b, _c, _d;
+    if (input.type === "keyDown") {
+      if (input.key === "F12") {
+        (_a = exports.mainWindow) == null ? void 0 : _a.webContents.toggleDevTools();
+      } else if (input.key === "F11") {
+        const isFS = (_b = exports.mainWindow) == null ? void 0 : _b.isFullScreen();
+        (_c = exports.mainWindow) == null ? void 0 : _c.setFullScreen(!isFS);
+        _event.preventDefault();
+      } else if (input.key === "Escape") {
+        if ((_d = exports.mainWindow) == null ? void 0 : _d.isFullScreen()) {
+          exports.mainWindow.setFullScreen(false);
+          _event.preventDefault();
+        }
+      }
+    }
   });
   electron.ipcMain.on("window:minimize", () => {
     var _a;
@@ -4526,6 +4686,19 @@ function createWindow() {
     var _a;
     return ((_a = exports.mainWindow) == null ? void 0 : _a.isMaximized()) ?? false;
   });
+  electron.ipcMain.on("window:toggle-fullscreen", () => {
+    if (exports.mainWindow) {
+      exports.mainWindow.setFullScreen(!exports.mainWindow.isFullScreen());
+    }
+  });
+  electron.ipcMain.on("window:set-fullscreen", (_event, fullscreen) => {
+    var _a;
+    (_a = exports.mainWindow) == null ? void 0 : _a.setFullScreen(fullscreen);
+  });
+  electron.ipcMain.handle("window:is-fullscreen", () => {
+    var _a;
+    return ((_a = exports.mainWindow) == null ? void 0 : _a.isFullScreen()) ?? false;
+  });
   exports.mainWindow.on("maximize", () => {
     var _a;
     (_a = exports.mainWindow) == null ? void 0 : _a.webContents.send("window:maximized-changed", true);
@@ -4533,6 +4706,22 @@ function createWindow() {
   exports.mainWindow.on("unmaximize", () => {
     var _a;
     (_a = exports.mainWindow) == null ? void 0 : _a.webContents.send("window:maximized-changed", false);
+  });
+  exports.mainWindow.on("enter-full-screen", () => {
+    var _a;
+    (_a = exports.mainWindow) == null ? void 0 : _a.webContents.send("window:fullscreen-changed", true);
+  });
+  exports.mainWindow.on("leave-full-screen", () => {
+    var _a;
+    (_a = exports.mainWindow) == null ? void 0 : _a.webContents.send("window:fullscreen-changed", false);
+  });
+  exports.mainWindow.on("enter-html-full-screen", () => {
+    var _a;
+    (_a = exports.mainWindow) == null ? void 0 : _a.webContents.send("window:fullscreen-changed", true);
+  });
+  exports.mainWindow.on("leave-html-full-screen", () => {
+    var _a;
+    (_a = exports.mainWindow) == null ? void 0 : _a.webContents.send("window:fullscreen-changed", false);
   });
   exports.mainWindow.on("closed", () => {
     exports.mainWindow = null;
@@ -4569,9 +4758,11 @@ function createTray() {
     return (_a = exports.mainWindow) == null ? void 0 : _a.show();
   });
 }
-electron.app.whenReady().then(() => {
+electron.app.whenReady().then(async () => {
+  const proxyPort = await streamProxy.start();
   createWindow();
   createTray();
+  electron.ipcMain.handle("proxy:get-port", () => proxyPort);
 });
 electron.app.on("window-all-closed", () => {
   electron.app.quit();
@@ -4581,4 +4772,5 @@ electron.app.on("activate", () => {
 });
 electron.app.on("before-quit", () => {
   tray == null ? void 0 : tray.destroy();
+  streamProxy.stop();
 });

@@ -1,30 +1,43 @@
-export function detectStreamType(url: string): 'hls' | 'mpegts' | 'mp4' | 'unknown' {
+import type { ContentType } from '../types/content';
+
+export type StreamEngine = 'mpegts' | 'mp4' | 'mpv';
+
+/**
+ * Detect stream type from URL pattern and content type.
+ * Returns the engine to use for playback.
+ *
+ * URL patterns (Xtream Codes):
+ *   Live:   http://host:8080/user/pass/377           → mpegts
+ *   Movie:  http://host:8080/user/pass/movie/...mp4  → mp4
+ *   Series: http://host:8080/user/pass/series/...mp4 → mp4
+ *   HLS:    http://host/stream.m3u8                  → mpegts (mpegts.js supports HLS too)
+ */
+export function detectStreamEngine(
+    url: string,
+    contentType?: ContentType,
+): StreamEngine {
     const lower = url.toLowerCase();
 
-    // HLS
-    if (lower.includes('.m3u8')) return 'hls';
-
-    // Direct MPEG-TS
-    if (lower.endsWith('.ts')) return 'mpegts';
-
-    // Common Xtream Codes ports
-    if (lower.includes(':8080/') || lower.includes(':25461/') || lower.includes(':8000/')) return 'mpegts';
-
-    // Xtream Codes URL pattern: /live/user/pass/id
-    if (/\/live\/[^/]+\/[^/]+\/\d+/.test(lower)) return 'mpegts';
-
-    // MP4
-    if (lower.includes('.mp4')) return 'mp4';
-
-    // Default to HLS
-    return 'hls';
-}
-
-export function getStreamTypeLabel(type: string): string {
-    switch (type) {
-        case 'hls': return 'HLS';
-        case 'mpegts': return 'MPEG-TS';
-        case 'mp4': return 'MP4';
-        default: return 'Unknown';
+    // 1. Explicit file extensions always win
+    if (lower.includes('.mp4') || lower.includes('.mkv') || lower.includes('.avi')) {
+        return 'mp4';
     }
+
+    // 2. Xtream Codes /movie/ or /series/ path → MP4 (VOD download)
+    if (/\/(movie|series)\//i.test(lower)) {
+        return 'mp4';
+    }
+
+    // 3. HLS → mpegts.js supports HLS natively
+    if (lower.includes('.m3u8')) {
+        return 'mpegts';
+    }
+
+    // 4. Content type hint from classifier
+    if (contentType === 'movie' || contentType === 'series') {
+        return 'mp4';
+    }
+
+    // 5. Everything else (live MPEG-TS, numeric IDs, etc.) → mpegts.js
+    return 'mpegts';
 }

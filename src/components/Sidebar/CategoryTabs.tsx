@@ -1,5 +1,5 @@
 import React, { memo, useRef, useCallback, useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Search, Star, Globe, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Globe, X } from 'lucide-react';
 import { useChannelStore } from '../../store/channelStore';
 
 export const CategoryTabs = memo(function CategoryTabs() {
@@ -48,10 +48,6 @@ export const CategoryTabs = memo(function CategoryTabs() {
         setFilter({ group: filter.group === group ? null : group });
     }, [filter.group, setFilter]);
 
-    const handleFavClick = useCallback(() => {
-        setFilter({ favorites: !filter.favorites });
-    }, [filter.favorites, setFilter]);
-
     return (
         <div>
             {/* Category search row */}
@@ -94,15 +90,6 @@ export const CategoryTabs = memo(function CategoryTabs() {
 
                 {/* Scrollable tabs */}
                 <div className="category-tabs-scroll" ref={scrollRef}>
-                    {/* Favorites */}
-                    <button
-                        className={`category-tab${filter.favorites ? ' active' : ''}`}
-                        data-active={filter.favorites}
-                        onClick={handleFavClick}
-                    >
-                        <Star size={11} /> Favoriler
-                    </button>
-
                     {/* All */}
                     <button
                         className={`category-tab${!filter.group && !filter.favorites ? ' active' : ''}`}

@@ -8,6 +8,10 @@ export interface ElectronAPI {
         close: () => void;
         isMaximized: () => Promise<boolean>;
         onMaximizedChanged: (callback: (maximized: boolean) => void) => () => void;
+        toggleFullscreen: () => void;
+        setFullscreen: (fullscreen: boolean) => void;
+        isFullscreen: () => Promise<boolean>;
+        onFullscreenChanged: (callback: (fullscreen: boolean) => void) => () => void;
     };
     // Player
     player: {
@@ -52,6 +56,10 @@ export interface ElectronAPI {
     stream: {
         check: (url: string) => Promise<{ alive: boolean; latency: number }>;
     };
+    // Stream proxy
+    proxy: {
+        getPort: () => Promise<number>;
+    };
 }
 
 function createEventUnsubscriber(channel: string, handler: (...args: unknown[]) => void): () => void {
@@ -70,6 +78,14 @@ const electronAPI: ElectronAPI = {
             const handler = (_event: IpcRendererEvent, maximized: boolean) => callback(maximized);
             ipcRenderer.on('window:maximized-changed', handler);
             return createEventUnsubscriber('window:maximized-changed', handler as (...args: unknown[]) => void);
+        },
+        toggleFullscreen: () => ipcRenderer.send('window:toggle-fullscreen'),
+        setFullscreen: (fullscreen: boolean) => ipcRenderer.send('window:set-fullscreen', fullscreen),
+        isFullscreen: () => ipcRenderer.invoke('window:is-fullscreen'),
+        onFullscreenChanged: (callback: (fullscreen: boolean) => void) => {
+            const handler = (_event: IpcRendererEvent, fullscreen: boolean) => callback(fullscreen);
+            ipcRenderer.on('window:fullscreen-changed', handler);
+            return createEventUnsubscriber('window:fullscreen-changed', handler as (...args: unknown[]) => void);
         },
     },
 
@@ -140,6 +156,10 @@ const electronAPI: ElectronAPI = {
 
     stream: {
         check: (url: string) => ipcRenderer.invoke('stream:check', url),
+    },
+
+    proxy: {
+        getPort: () => ipcRenderer.invoke('proxy:get-port'),
     },
 };
 

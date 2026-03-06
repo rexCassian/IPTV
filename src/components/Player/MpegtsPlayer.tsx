@@ -4,9 +4,10 @@ import { usePlayerStore } from '../../store/playerStore';
 
 interface MpegtsPlayerProps {
     url: string;
+    isVod?: boolean;
 }
 
-export const MpegtsPlayer = memo(function MpegtsPlayer({ url }: MpegtsPlayerProps) {
+export const MpegtsPlayer = memo(function MpegtsPlayer({ url, isVod }: MpegtsPlayerProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const playerRef = useRef<mpegts.Player | null>(null);
     const { setStatus, setError, setStreamInfo, volume, muted } = usePlayerStore();
@@ -27,27 +28,34 @@ export const MpegtsPlayer = memo(function MpegtsPlayer({ url }: MpegtsPlayerProp
 
     const initPlayer = useCallback(() => {
         if (!videoRef.current || !mpegts.isSupported()) {
+            setStatus('error');
             setError('MPEG-TS desteklenmiyor');
             return;
         }
 
+        setStatus('loading');
+
         destroyPlayer();
+
+        // Auto-detect: .m3u8 → HLS, everything else → MPEG-TS
+        const isHls = url.toLowerCase().includes('.m3u8');
 
         const player = mpegts.createPlayer(
             {
-                type: 'mpegts',
+                type: isHls ? 'mse' : 'mpegts',
                 url: url,
-                isLive: true,
+                isLive: !isVod,
             },
             {
                 enableWorker: true,
-                enableStashBuffer: true,
-                stashInitialSize: 512 * 1024,
-                lazyLoadMaxDuration: 3,
-                seekType: 'range',
+                enableStashBuffer: false,
                 liveBufferLatencyChasing: true,
-                liveBufferLatencyMaxLatency: 2,
-                liveBufferLatencyMinRemain: 0.5,
+                liveBufferLatencyMaxLatency: 6,
+                liveBufferLatencyMinRemain: 2,
+                lazyLoad: false,
+                autoCleanupSourceBuffer: true,
+                autoCleanupMinBackwardDuration: 10,
+                autoCleanupMaxBackwardDuration: 30,
             },
         );
 
@@ -55,7 +63,9 @@ export const MpegtsPlayer = memo(function MpegtsPlayer({ url }: MpegtsPlayerProp
 
         player.on(mpegts.Events.ERROR, (errorType, errorDetail, errorInfo) => {
             console.error('[MpegtsPlayer] Error:', errorType, errorDetail, errorInfo);
+
             if (errorType === mpegts.ErrorTypes.NETWORK_ERROR) {
+                setStatus('loading');
                 setError(`Ağ hatası: ${errorDetail}`);
                 // Auto-retry on network errors
                 setTimeout(() => {
@@ -70,8 +80,10 @@ export const MpegtsPlayer = memo(function MpegtsPlayer({ url }: MpegtsPlayerProp
                     }
                 }, 2000);
             } else if (errorType === mpegts.ErrorTypes.MEDIA_ERROR) {
+                setStatus('error');
                 setError(`Medya hatası: ${errorDetail}`);
             } else {
+                setStatus('error');
                 setError(`Oynatma hatası: ${errorDetail}`);
             }
         });
@@ -96,11 +108,14 @@ export const MpegtsPlayer = memo(function MpegtsPlayer({ url }: MpegtsPlayerProp
         });
 
         player.load();
-        player.play().then(() => {
-            setStatus('playing');
-        }).catch((err) => {
-            console.error('[MpegtsPlayer] Play error:', err);
-        });
+        const playPromise = player.play();
+        if (playPromise && typeof playPromise.then === 'function') {
+            playPromise.then(() => {
+                setStatus('playing');
+            }).catch((err: unknown) => {
+                console.error('[MpegtsPlayer] Play error:', err);
+            });
+        }
 
         playerRef.current = player;
     }, [url, destroyPlayer, setStatus, setError, setStreamInfo]);
@@ -125,12 +140,15 @@ export const MpegtsPlayer = memo(function MpegtsPlayer({ url }: MpegtsPlayerProp
         <div className="absolute inset-0 flex items-center justify-center bg-black">
             <video
                 ref={videoRef}
-                className="w-full h-full object-contain"
+                className="w-full h-full object-cover"
                 autoPlay
                 playsInline
                 onWaiting={() => setStatus('buffering')}
                 onPlaying={() => setStatus('playing')}
-                onError={() => setError('Video oynatma hatası')}
+                onError={() => {
+                    setStatus('error');
+                    setError('Video oynatma hatası');
+                }}
             />
         </div>
     );

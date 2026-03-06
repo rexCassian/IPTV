@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Star } from 'lucide-react';
 import { useUiStore } from '../../store/uiStore';
 import { useChannelStore } from '../../store/channelStore';
 import { SearchBar } from './SearchBar';
@@ -48,8 +48,28 @@ export const Sidebar = memo(function Sidebar() {
                     <MainTabBar />
 
                     {/* ── Search ── */}
-                    <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--glass-border)' }}>
+                    <div style={{ padding: '8px 10px', borderBottom: 'none' }}>
                         <SearchBar />
+                    </div>
+
+                    {/* ── Global Favorites Filter Toggle ── */}
+                    <div style={{ padding: '0 10px 8px', borderBottom: '1px solid var(--glass-border)', display: 'flex', gap: 6 }}>
+                        <button
+                            onClick={() => setFilter({ favorites: !filter.favorites })}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 6,
+                                padding: '6px 12px', borderRadius: 8,
+                                background: filter.favorites ? 'rgba(251,191,36,0.15)' : 'var(--glass-bg)',
+                                border: '1px solid',
+                                borderColor: filter.favorites ? 'rgba(251,191,36,0.4)' : 'var(--glass-border)',
+                                color: filter.favorites ? '#FBBF24' : 'var(--text-secondary)',
+                                fontFamily: 'Outfit, sans-serif', fontSize: 12, fontWeight: filter.favorites ? 500 : 400,
+                                cursor: 'pointer', transition: 'all 0.2s', flex: 1, justifyContent: 'center'
+                            }}
+                        >
+                            <Star size={13} fill={filter.favorites ? 'currentColor' : 'none'} />
+                            Favoriler
+                        </button>
                     </div>
 
                     {/* ── Live: category breadcrumb when inside a group ── */}
@@ -76,27 +96,7 @@ export const Sidebar = memo(function Sidebar() {
                         </div>
                     )}
 
-                    {/* ── Live: favorites breadcrumb ── */}
-                    {activeMainTab === 'live' && filter.favorites && (
-                        <div style={{
-                            display: 'flex', alignItems: 'center', gap: 6,
-                            padding: '6px 10px', borderBottom: '1px solid var(--glass-border)',
-                            background: 'rgba(251,191,36,0.06)', flexShrink: 0,
-                        }}>
-                            <button
-                                onClick={() => setFilter({ favorites: false })}
-                                style={{
-                                    display: 'flex', alignItems: 'center', gap: 4,
-                                    padding: '3px 8px', borderRadius: 6,
-                                    border: '1px solid var(--glass-border)', background: 'var(--glass-bg)',
-                                    color: 'var(--text-secondary)', fontFamily: 'Outfit, sans-serif', fontSize: 11, cursor: 'pointer',
-                                }}
-                            >
-                                <ChevronLeft size={12} /> Kategoriler
-                            </button>
-                            <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: 12, fontWeight: 600, color: '#FBBF24' }}>★ Favoriler</p>
-                        </div>
-                    )}
+
 
                     {/* ── CategoryTabs — shown in live tab when inside a group ── */}
                     {showCategoryTabs && <CategoryTabs />}

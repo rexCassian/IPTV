@@ -38,9 +38,39 @@ export const useUiStore = create<UiStore>((set) => ({
 
     closeModal: () => set({ activeModal: null }),
 
-    setFullscreen: (fullscreen) => set({ isFullscreen: fullscreen }),
+    setFullscreen: async (fullscreen) => {
+        if (useUiStore.getState().isFullscreen === fullscreen) return;
+        set({ isFullscreen: fullscreen });
 
-    toggleFullscreen: () => set((s) => ({ isFullscreen: !s.isFullscreen })),
+        if (fullscreen) {
+            try {
+                if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                }
+            } catch (err) {
+                if (window.electronAPI?.window?.setFullscreen) {
+                    window.electronAPI.window.setFullscreen(true);
+                }
+            }
+        } else {
+            try {
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (window.electronAPI?.window?.setFullscreen) {
+                    window.electronAPI.window.setFullscreen(false);
+                }
+            } catch (err) {
+                if (window.electronAPI?.window?.setFullscreen) {
+                    window.electronAPI.window.setFullscreen(false);
+                }
+            }
+        }
+    },
+
+    toggleFullscreen: () => {
+        const isFS = useUiStore.getState().isFullscreen;
+        useUiStore.getState().setFullscreen(!isFS);
+    },
 
     setWindowMaximized: (maximized) => set({ isWindowMaximized: maximized }),
 

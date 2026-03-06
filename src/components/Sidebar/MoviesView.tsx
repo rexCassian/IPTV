@@ -1,6 +1,6 @@
 import React, { memo, useRef, useCallback } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Film } from 'lucide-react';
+import { Film, Star } from 'lucide-react';
 import { useChannelStore } from '../../store/channelStore';
 import { playChannel } from '../../utils/playerActions';
 import type { Channel } from '../../types/channel';
@@ -9,11 +9,12 @@ const ITEM_HEIGHT = 72;
 const COL = 2;
 
 export const MoviesView = memo(function MoviesView() {
-    const { filteredChannels, movieChannels, filter } = useChannelStore();
+    const { filteredChannels, movieChannels, filter, favorites, toggleFavoriteAsync } = useChannelStore();
     const parentRef = useRef<HTMLDivElement>(null);
 
     // When no filter active, show all movies; else use filtered result
-    const movies: Channel[] = filter.search ? filteredChannels : movieChannels;
+    const hasFilter = filter.search || filter.favorites || filter.group || filter.country;
+    const movies: Channel[] = hasFilter ? filteredChannels : movieChannels;
 
     // Group into rows of 2
     const rowCount = Math.ceil(movies.length / COL);
@@ -28,6 +29,11 @@ export const MoviesView = memo(function MoviesView() {
     const handlePlay = useCallback((ch: Channel) => {
         playChannel(ch);
     }, []);
+
+    const handleToggleFav = useCallback((e: React.MouseEvent, id: string) => {
+        e.stopPropagation();
+        toggleFavoriteAsync(id);
+    }, [toggleFavoriteAsync]);
 
     if (movies.length === 0) {
         return (
@@ -55,9 +61,18 @@ export const MoviesView = memo(function MoviesView() {
                                 display: 'flex', gap: 4, padding: '2px 0',
                             }}
                         >
-                            {rowMovies.map((movie) => (
-                                <MovieCard key={movie.id} movie={movie} onPlay={handlePlay} />
-                            ))}
+                            {rowMovies.map((movie) => {
+                                const isFav = favorites.has(movie.id);
+                                return (
+                                    <MovieCard
+                                        key={movie.id}
+                                        movie={movie}
+                                        onPlay={handlePlay}
+                                        isFavorite={isFav}
+                                        onToggleFav={handleToggleFav}
+                                    />
+                                );
+                            })}
                             {/* Empty filler for last row odd count */}
                             {rowMovies.length < COL && <div style={{ flex: 1 }} />}
                         </div>
@@ -69,8 +84,8 @@ export const MoviesView = memo(function MoviesView() {
 });
 
 const MovieCard = memo(function MovieCard({
-    movie, onPlay,
-}: { movie: Channel; onPlay: (ch: Channel) => void }) {
+    movie, onPlay, isFavorite, onToggleFav
+}: { movie: Channel; onPlay: (ch: Channel) => void; isFavorite: boolean; onToggleFav: (e: React.MouseEvent, id: string) => void }) {
     return (
         <button
             onClick={() => onPlay(movie)}
@@ -99,6 +114,7 @@ const MovieCard = memo(function MovieCard({
         >
             {/* Poster / Logo area */}
             <div style={{
+                position: 'relative',
                 height: 40,
                 background: movie.logo
                     ? `url(${movie.logo}) center/cover no-repeat, rgba(255,255,255,0.04)`
@@ -109,6 +125,34 @@ const MovieCard = memo(function MovieCard({
                 flexShrink: 0,
             }}>
                 {!movie.logo && <Film size={18} style={{ color: '#F59E0B', opacity: 0.6 }} />}
+
+                {/* Favorite Star Button */}
+                <button
+                    onClick={(e) => onToggleFav(e, movie.id)}
+                    style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        padding: 4,
+                        borderRadius: '50%',
+                        background: isFavorite ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.1)',
+                        backdropFilter: 'blur(4px)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        color: isFavorite ? '#FBBF24' : 'rgba(255,255,255,0.5)',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(0,0,0,0.6)';
+                        (e.currentTarget as HTMLButtonElement).style.color = isFavorite ? '#FCD34D' : '#fff';
+                    }}
+                    onMouseLeave={(e) => {
+                        (e.currentTarget as HTMLButtonElement).style.background = isFavorite ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.1)';
+                        (e.currentTarget as HTMLButtonElement).style.color = isFavorite ? '#FBBF24' : 'rgba(255,255,255,0.5)';
+                    }}
+                >
+                    <Star size={12} fill={isFavorite ? 'currentColor' : 'none'} />
+                </button>
             </div>
 
             {/* Title */}
@@ -131,4 +175,4 @@ const MovieCard = memo(function MovieCard({
             </div>
         </button>
     );
-}, (prev, next) => prev.movie.id === next.movie.id);
+}, (prev, next) => prev.movie.id === next.movie.id && prev.isFavorite === next.isFavorite);

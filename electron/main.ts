@@ -1,14 +1,19 @@
 import { app, BrowserWindow, shell, ipcMain, session, Tray, Menu, nativeImage } from 'electron';
 import path from 'path';
 import { registerIpcHandlers } from './ipcHandlers';
+import { StreamProxy } from './streamProxy';
 
 // Disable hardware acceleration issues — we handle GPU via mpv
 // app.disableHardwareAcceleration();
+
+// Enable AudioTrackList so HTML5 <video> exposes multiple audio tracks for VOD content
+app.commandLine.appendSwitch('enable-features', 'AudioTrackList');
 
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
+const streamProxy = new StreamProxy();
 
 const WINDOW_STATE_DEFAULTS = {
     width: 1400,
@@ -36,7 +41,7 @@ function createWindow(): void {
         autoHideMenuBar: true,
     });
 
-    // Intercept headers for IPTV compatibility
+    // Intercept headers for IPTV compatibility (Firefox UA matching M3U user-agent)
     session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
         const url = details.url;
         if (
@@ -45,11 +50,38 @@ function createWindow(): void {
             !url.startsWith('http://127.0.0.1') &&
             !url.includes('vite')
         ) {
-            details.requestHeaders['User-Agent'] = 'VLC/3.0.20 LibVLC/3.0.20';
+            details.requestHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:100.0) Gecko/20100101 Firefox/100.0';
             details.requestHeaders['Connection'] = 'keep-alive';
             details.requestHeaders['Accept'] = '*/*';
+            // Add Referer/Origin from target URL for IPTV auth
+            try {
+                const parsed = new URL(url);
+                const origin = `${parsed.protocol}//${parsed.host}`;
+                details.requestHeaders['Referer'] = origin + '/';
+                details.requestHeaders['Origin'] = origin;
+            } catch {
+                // ignore parse errors
+            }
         }
         callback({ requestHeaders: details.requestHeaders });
+    });
+
+    // CSP — Google Fonts ve media kaynaklarına izin ver
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Content-Security-Policy': [
+                    "default-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                    "worker-src 'self' blob:; " +
+                    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+                    "font-src 'self' https://fonts.gstatic.com data:; " +
+                    "media-src 'self' blob: http: https:; " +
+                    "img-src 'self' data: blob: http: https:; " +
+                    "connect-src 'self' ws: wss: http: https:;"
+                ],
+            },
+        });
     });
 
     // Open external links in default browser
@@ -74,6 +106,28 @@ function createWindow(): void {
     // Show window when ready
     mainWindow.once('ready-to-show', () => {
         mainWindow?.show();
+        // Auto-open DevTools in dev mode
+        if (isDev) {
+            mainWindow?.webContents.openDevTools();
+        }
+    });
+
+    // Global keyboard shortcuts (F12, F11, Escape)
+    mainWindow.webContents.on('before-input-event', (_event, input) => {
+        if (input.type === 'keyDown') {
+            if (input.key === 'F12') {
+                mainWindow?.webContents.toggleDevTools();
+            } else if (input.key === 'F11') {
+                const isFS = mainWindow?.isFullScreen();
+                mainWindow?.setFullScreen(!isFS);
+                _event.preventDefault();
+            } else if (input.key === 'Escape') {
+                if (mainWindow?.isFullScreen()) {
+                    mainWindow.setFullScreen(false);
+                    _event.preventDefault();
+                }
+            }
+        }
     });
 
     // Window state IPC handlers
@@ -88,11 +142,37 @@ function createWindow(): void {
     ipcMain.on('window:close', () => mainWindow?.close());
     ipcMain.handle('window:is-maximized', () => mainWindow?.isMaximized() ?? false);
 
+    // Fullscreen IPC handlers
+    ipcMain.on('window:toggle-fullscreen', () => {
+        if (mainWindow) {
+            mainWindow.setFullScreen(!mainWindow.isFullScreen());
+        }
+    });
+    ipcMain.on('window:set-fullscreen', (_event, fullscreen: boolean) => {
+        mainWindow?.setFullScreen(fullscreen);
+    });
+    ipcMain.handle('window:is-fullscreen', () => mainWindow?.isFullScreen() ?? false);
+
     mainWindow.on('maximize', () => {
         mainWindow?.webContents.send('window:maximized-changed', true);
     });
     mainWindow.on('unmaximize', () => {
         mainWindow?.webContents.send('window:maximized-changed', false);
+    });
+
+    mainWindow.on('enter-full-screen', () => {
+        mainWindow?.webContents.send('window:fullscreen-changed', true);
+    });
+    mainWindow.on('leave-full-screen', () => {
+        mainWindow?.webContents.send('window:fullscreen-changed', false);
+    });
+
+    // Also listen to HTML Native Fullscreen events (when user double-clicks video element etc.)
+    mainWindow.on('enter-html-full-screen', () => {
+        mainWindow?.webContents.send('window:fullscreen-changed', true);
+    });
+    mainWindow.on('leave-html-full-screen', () => {
+        mainWindow?.webContents.send('window:fullscreen-changed', false);
     });
 
     mainWindow.on('closed', () => {
@@ -131,9 +211,15 @@ function createTray(): void {
 }
 
 // App lifecycle
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+    // Start stream proxy first
+    const proxyPort = await streamProxy.start();
+
     createWindow();
     createTray();
+
+    // Expose proxy port to renderer
+    ipcMain.handle('proxy:get-port', () => proxyPort);
 });
 
 app.on('window-all-closed', () => {
@@ -147,6 +233,7 @@ app.on('activate', () => {
 // Cleanup on quit
 app.on('before-quit', () => {
     tray?.destroy();
+    streamProxy.stop();
 });
 
 export { mainWindow };

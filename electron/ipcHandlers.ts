@@ -40,7 +40,8 @@ export function registerIpcHandlers(mainWindow: BrowserWindow): void {
     // ─── Player handlers ───
     ipcMain.handle('player:play', async (_event, url: string, streamType: string) => {
         try {
-            if (streamType === 'hls' || streamType === 'mpv') {
+            // Route to MPV for hls, auto, mpv, and any non-mpegts stream type
+            if (streamType !== 'mpegts') {
                 await mpvManager!.play(url);
             }
             mainWindow.webContents.send('player:state-changed', { playing: true, url, streamType });
