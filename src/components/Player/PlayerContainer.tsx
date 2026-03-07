@@ -3,6 +3,7 @@ import { usePlayerStore } from '../../store/playerStore';
 import { MpvPlayer } from './MpvPlayer';
 import { MpegtsPlayer } from './MpegtsPlayer';
 import { Mp4Player } from './Mp4Player';
+import { HlsPlayer } from './HlsPlayer';
 import type { Mp4PlayerHandle, AudioTrackInfo, SubtitleTrackInfo } from './Mp4Player';
 import { PlayerControls } from './PlayerControls';
 import { LoadingOverlay } from './LoadingOverlay';

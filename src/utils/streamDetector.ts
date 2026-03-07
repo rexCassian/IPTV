@@ -1,6 +1,6 @@
 import type { ContentType } from '../types/content';
 
-export type StreamEngine = 'mpegts' | 'mp4' | 'mpv';
+export type StreamEngine = 'mpegts' | 'mp4' | 'mpv' | 'hls';
 
 /**
  * Detect stream type from URL pattern and content type.
@@ -10,7 +10,7 @@ export type StreamEngine = 'mpegts' | 'mp4' | 'mpv';
  *   Live:   http://host:8080/user/pass/377           → mpegts
  *   Movie:  http://host:8080/user/pass/movie/...mp4  → mp4
  *   Series: http://host:8080/user/pass/series/...mp4 → mp4
- *   HLS:    http://host/stream.m3u8                  → mpegts (mpegts.js supports HLS too)
+ *   HLS:    http://host/stream.m3u8                  → hls
  */
 export function detectStreamEngine(
     url: string,
@@ -28,9 +28,9 @@ export function detectStreamEngine(
         return 'mp4';
     }
 
-    // 3. HLS → mpegts.js supports HLS natively
+    // 3. HLS -> Native HLS.js
     if (lower.includes('.m3u8')) {
-        return 'mpegts';
+        return 'hls';
     }
 
     // 4. Content type hint from classifier
