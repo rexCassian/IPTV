@@ -36,11 +36,15 @@ export interface ElectronAPI {
         getCurrentProgram: (channelId: string) => Promise<unknown | null>;
         forceRefresh: () => Promise<void>;
         onUpdated: (callback: () => void) => () => void;
+        getMeta: () => Promise<{ lastUpdate: number | null; channelsCount: number }>;
+        clearDatabase: () => Promise<boolean>;
     };
     // Settings
     settings: {
         get: () => Promise<Record<string, unknown>>;
         set: (key: string, value: unknown) => Promise<void>;
+        exportData: () => Promise<boolean>;
+        importData: () => Promise<boolean>;
     };
     // Favorites
     favorites: {
@@ -137,11 +141,15 @@ const electronAPI: ElectronAPI = {
             ipcRenderer.on('epg:updated', handler);
             return createEventUnsubscriber('epg:updated', handler as (...args: unknown[]) => void);
         },
+        getMeta: () => ipcRenderer.invoke('epg:get-meta'),
+        clearDatabase: () => ipcRenderer.invoke('epg:clear-database'),
     },
 
     settings: {
         get: () => ipcRenderer.invoke('settings:get'),
         set: (key: string, value: unknown) => ipcRenderer.invoke('settings:set', key, value),
+        exportData: () => ipcRenderer.invoke('settings:export'),
+        importData: () => ipcRenderer.invoke('settings:import'),
     },
 
     favorites: {

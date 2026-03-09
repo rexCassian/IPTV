@@ -9,16 +9,19 @@ interface UiStore {
     isFullscreen: boolean;
     isWindowMaximized: boolean;
     showStreamInfo: boolean;
+    isSearchActive: boolean;
     theme: 'dark';
 
     setSidebarWidth: (width: number) => void;
     toggleSidebar: () => void;
+    setSidebarCollapsed: (collapsed: boolean) => void;
     openModal: (modal: ModalType) => void;
     closeModal: () => void;
     setFullscreen: (fullscreen: boolean) => void;
     toggleFullscreen: () => void;
     setWindowMaximized: (maximized: boolean) => void;
     toggleStreamInfo: () => void;
+    setSearchActive: (active: boolean) => void;
 }
 
 export const useUiStore = create<UiStore>((set) => ({
@@ -28,11 +31,14 @@ export const useUiStore = create<UiStore>((set) => ({
     isFullscreen: false,
     isWindowMaximized: false,
     showStreamInfo: false,
+    isSearchActive: false,
     theme: 'dark',
 
     setSidebarWidth: (width) => set({ sidebarWidth: Math.max(280, Math.min(500, width)) }),
 
     toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+    setSidebarCollapsed: (c) => set({ sidebarCollapsed: c }),
 
     openModal: (modal) => set({ activeModal: modal }),
 
@@ -75,4 +81,6 @@ export const useUiStore = create<UiStore>((set) => ({
     setWindowMaximized: (maximized) => set({ isWindowMaximized: maximized }),
 
     toggleStreamInfo: () => set((s) => ({ showStreamInfo: !s.showStreamInfo })),
+
+    setSearchActive: (a) => set({ isSearchActive: a }),
 }));

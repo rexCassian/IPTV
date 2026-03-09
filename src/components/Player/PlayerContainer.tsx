@@ -99,6 +99,24 @@ export const PlayerContainer = memo(function PlayerContainer() {
                         triggerOSD(<SkipBack />, '-10s', 'left');
                     }
                     break;
+                case 'arrowup': {
+                    e.preventDefault();
+                    const st = usePlayerStore.getState();
+                    const newVol = Math.min(100, st.volume + 5);
+                    st.setVolume(newVol);
+                    window.electronAPI.player.setVolume(newVol);
+                    triggerOSD(<Volume2 />, `${newVol}%`, 'top-right');
+                    break;
+                }
+                case 'arrowdown': {
+                    e.preventDefault();
+                    const st = usePlayerStore.getState();
+                    const newVol = Math.max(0, st.volume - 5);
+                    st.setVolume(newVol);
+                    window.electronAPI.player.setVolume(newVol);
+                    triggerOSD(newVol === 0 ? <VolumeX /> : <Volume2 />, `${newVol}%`, 'top-right');
+                    break;
+                }
                 case 'm':
                     e.preventDefault();
                     const st = usePlayerStore.getState();

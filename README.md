@@ -4,10 +4,12 @@ Production-ready IPTV desktop application for Windows with an emphasis on a prem
 
 ## Features
 
-- 🎬 **Modern Player Engine**: Built-in HTML5 + mpegts.js dual engine. No external players (like mpv) needed.
+- 🎬 **Modern Player Engine**: Built-in HTML5, mpegts.js & `hls.js` dynamic core switching. No external players (like mpv) needed.
 - 📺 **Massive Scaling**: Virtual scrolling supports 10,000+ channels at 60 FPS.
 - 📖 **EPG Program Guide**: XMLTV support with lightning-fast `sql.js` (WebAssembly) storage — **Zero native build tools required**.
 - 🔍 **Fuzzy Search**: Instant channel search across thousands of streams.
+- 👨‍👩‍👧 **Advanced Content Filters**: One-click Adult-content blocker and regex-based category hiding to protect family and optimize loading.
+- ⚙️ **Power-user Delivery**: Complete data-backup pipelines to Export/Import Custom Application settings locally.
 - 🎨 **Liquid Glass UI**: Premium dark theme with translucent glassmorphism overlays and slick animations.
 - ⌨️ **Keyboard Navigation**: Full keyboard control (Arrow keys, Enter, F for Fullscreen, M for Mute, Esc).
 

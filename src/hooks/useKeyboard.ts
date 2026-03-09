@@ -46,15 +46,14 @@ export function useKeyboard(actions: KeyboardActions) {
 
                 case 'f':
                 case 'F':
-                    if (!e.ctrlKey && !e.altKey) {
+                case 'k':
+                case 'K':
+                    if ((e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.altKey) {
                         e.preventDefault();
                         ui.toggleFullscreen();
-                    }
-                    if (e.ctrlKey) {
+                    } else if (e.ctrlKey) {
                         e.preventDefault();
-                        // Focus search bar
-                        const searchInput = document.getElementById('channel-search');
-                        if (searchInput) searchInput.focus();
+                        ui.setSearchActive(true);
                     }
                     break;
 
@@ -80,7 +79,9 @@ export function useKeyboard(actions: KeyboardActions) {
 
                 case 'Escape':
                     e.preventDefault();
-                    if (ui.isFullscreen) {
+                    if (ui.isSearchActive) {
+                        ui.setSearchActive(false);
+                    } else if (ui.isFullscreen) {
                         ui.setFullscreen(false);
                     } else if (ui.activeModal) {
                         ui.closeModal();

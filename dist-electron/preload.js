@@ -68,11 +68,15 @@ const electronAPI = {
       const handler = () => callback();
       electron.ipcRenderer.on("epg:updated", handler);
       return createEventUnsubscriber("epg:updated", handler);
-    }
+    },
+    getMeta: () => electron.ipcRenderer.invoke("epg:get-meta"),
+    clearDatabase: () => electron.ipcRenderer.invoke("epg:clear-database")
   },
   settings: {
     get: () => electron.ipcRenderer.invoke("settings:get"),
-    set: (key, value) => electron.ipcRenderer.invoke("settings:set", key, value)
+    set: (key, value) => electron.ipcRenderer.invoke("settings:set", key, value),
+    exportData: () => electron.ipcRenderer.invoke("settings:export"),
+    importData: () => electron.ipcRenderer.invoke("settings:import")
   },
   favorites: {
     getAll: () => electron.ipcRenderer.invoke("favorites:get-all"),

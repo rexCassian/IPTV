@@ -7,6 +7,18 @@ interface Settings {
         hwdec: string;
         cacheSecs: number;
         bufferSize: string;
+        engineOverride: 'auto' | 'mpegts' | 'mp4' | 'hls' | 'mpv';
+        timeSkipSecs: number;
+        audioDelay: number;
+    };
+    uiSettings: {
+        startupView: 'live' | 'movies' | 'series' | 'favorites';
+        theme: 'default' | 'neon-red' | 'matrix-green' | 'midnight-blue';
+        reduceAnimations: boolean;
+    };
+    contentSettings: {
+        hideAdult: boolean;
+        hiddenCategories: string[];
     };
     volume: number;
     lastChannel: string | null;
@@ -22,6 +34,8 @@ interface SettingsStore extends Settings {
     addEpgUrl: (url: string) => void;
     removeEpgUrl: (url: string) => void;
     updatePlayerSettings: (settings: Partial<Settings['playerSettings']>) => void;
+    updateUiSettings: (settings: Partial<Settings['uiSettings']>) => void;
+    updateContentSettings: (settings: Partial<Settings['contentSettings']>) => void;
     setVolume: (volume: number) => void;
     setLastChannel: (channelId: string | null) => void;
 }
@@ -33,6 +47,18 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         hwdec: 'd3d11va',
         cacheSecs: 8,
         bufferSize: '32MiB',
+        engineOverride: 'auto',
+        timeSkipSecs: 10,
+        audioDelay: 0,
+    },
+    uiSettings: {
+        startupView: 'live',
+        theme: 'default',
+        reduceAnimations: false,
+    },
+    contentSettings: {
+        hideAdult: false,
+        hiddenCategories: [],
     },
     volume: 80,
     lastChannel: null,
@@ -45,6 +71,8 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
                 m3uSources: (settings.m3uSources as string[]) || [],
                 epgUrls: (settings.epgUrls as string[]) || [],
                 playerSettings: (settings.playerSettings as Settings['playerSettings']) || get().playerSettings,
+                uiSettings: (settings.uiSettings as Settings['uiSettings']) || get().uiSettings,
+                contentSettings: (settings.contentSettings as Settings['contentSettings']) || get().contentSettings,
                 volume: (settings.volume as number) || 80,
                 lastChannel: (settings.lastChannel as string) || null,
                 loaded: true,
@@ -98,6 +126,18 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
         const updated = { ...get().playerSettings, ...settings };
         set({ playerSettings: updated });
         window.electronAPI.settings.set('playerSettings', updated);
+    },
+
+    updateUiSettings: (settings) => {
+        const updated = { ...get().uiSettings, ...settings };
+        set({ uiSettings: updated });
+        window.electronAPI.settings.set('uiSettings', updated);
+    },
+
+    updateContentSettings: (settings) => {
+        const updated = { ...get().contentSettings, ...settings };
+        set({ contentSettings: updated });
+        window.electronAPI.settings.set('contentSettings', updated);
     },
 
     setVolume: (volume) => {

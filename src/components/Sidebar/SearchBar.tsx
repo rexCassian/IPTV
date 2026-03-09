@@ -36,7 +36,7 @@ export const SearchBar = memo(function SearchBar() {
                 size={14}
                 style={{
                     position: 'absolute',
-                    left: 11,
+                    left: 14,
                     top: '50%',
                     transform: 'translateY(-50%)',
                     color: 'var(--text-muted)',
@@ -52,6 +52,7 @@ export const SearchBar = memo(function SearchBar() {
                 onChange={handleChange}
                 placeholder="Kanal ara... (Ctrl+F)"
                 className="search-glass"
+                style={{ width: '100%', paddingLeft: 34 }}
             />
             {localValue && (
                 <button

@@ -153,7 +153,7 @@ export const PlayerControls = memo(function PlayerControls({
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: -50, opacity: 0 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="w-full bg-gradient-to-b from-dark-950/90 via-dark-950/40 to-transparent pt-6 pb-12 px-6 flex items-center justify-between pointer-events-auto"
+                        className={`w-full bg-gradient-to-b from-dark-950/90 via-dark-950/40 to-transparent pt-6 pb-12 pr-6 flex items-center justify-between pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${!isFullscreen && !sidebarCollapsed ? 'pl-[420px]' : 'pl-6'}`}
                     >
                         <div className="flex items-center gap-4">
                             <button
@@ -200,7 +200,7 @@ export const PlayerControls = memo(function PlayerControls({
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: 50, opacity: 0 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="w-full bg-gradient-to-t from-dark-950/95 via-dark-950/70 to-transparent pt-12 pb-6 px-6 flex flex-col gap-4 pointer-events-auto"
+                        className={`w-full bg-gradient-to-t from-dark-950/95 via-dark-950/70 to-transparent pt-12 pb-6 pr-6 flex flex-col gap-4 pointer-events-auto transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] ${!isFullscreen && !sidebarCollapsed ? 'pl-[420px]' : 'pl-6'}`}
                     >
                         {/* Canlı Yayın EPG Bar */}
                         {player.engine !== 'mp4' && currentProgram && (

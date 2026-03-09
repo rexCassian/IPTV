@@ -4,12 +4,15 @@ import type { Channel, ChannelFilter } from '../types/channel';
 import type { MainTab } from '../types/content';
 import { groupSeriesByShow, parseSeriesName } from '../utils/seriesParser';
 import type { SeriesGroup } from '../types/content';
+import { useSettingsStore } from './settingsStore';
 
 interface ChannelStore {
     // ─── Base ───────────────────────────────────────────
     channels: Channel[];
+    safeChannels: Channel[];
     filteredChannels: Channel[];
     groups: string[];
+    allGroups: string[];
     countries: string[];
     filter: ChannelFilter;
     isLoading: boolean;
@@ -40,6 +43,7 @@ interface ChannelStore {
     toggleFavorite: (id: string) => void;
     toggleFavoriteAsync: (id: string) => Promise<boolean>;
     applyFilters: () => void;
+    recomputeSafeChannels: () => void;
     setActiveMainTab: (tab: MainTab) => void;
 }
 
@@ -76,9 +80,9 @@ function splitByContentType(channels: Channel[]) {
     return { live, movie, series };
 }
 
-export const useChannelStore = create<ChannelStore>((set, get) => ({
+export const useChannelStore = create<ChannelStore>((set: any, get: any) => ({
     // base
-    channels: [], filteredChannels: [], groups: [], countries: [],
+    channels: [], safeChannels: [], filteredChannels: [], groups: [], allGroups: [], countries: [],
     filter: { search: '', group: null, country: null, favorites: false },
     isLoading: false, loadProgress: { loaded: 0, total: 0 },
     selectedIndex: 0, favorites: new Set<string>(), fuseInstance: null,
@@ -89,56 +93,36 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     seriesGroups: [],
     liveCount: 0, movieCount: 0, seriesCount: 0,
 
-    setChannels: (channels) => {
-        const fuse = buildFuse(channels);
-        const { live, movie, series } = splitByContentType(channels);
-        const sg = groupSeriesByShow(series as any);
-        set({
-            channels, fuseInstance: fuse,
-            groups: extractGroups(channels),
-            countries: extractCountries(channels),
-            selectedIndex: 0,
-            liveChannels: live, movieChannels: movie, seriesChannels: series,
-            seriesGroups: sg,
-            liveCount: live.length, movieCount: movie.length, seriesCount: series.length,
-        });
-        get().applyFilters();
+    setChannels: (channels: Channel[]) => {
+        set({ channels });
+        get().recomputeSafeChannels();
     },
 
-    appendChannels: (newChannels) => {
+    appendChannels: (newChannels: Channel[]) => {
         const all = [...get().channels, ...newChannels];
-        const fuse = buildFuse(all);
-        const { live, movie, series } = splitByContentType(all);
-        const sg = groupSeriesByShow(series as any);
-        set({
-            channels: all, fuseInstance: fuse,
-            groups: extractGroups(all), countries: extractCountries(all),
-            liveChannels: live, movieChannels: movie, seriesChannels: series,
-            seriesGroups: sg,
-            liveCount: live.length, movieCount: movie.length, seriesCount: series.length,
-        });
+        set({ channels: all });
+        get().recomputeSafeChannels();
+    },
+
+    setFilter: (partial: Partial<ChannelFilter>) => {
+        set((state: ChannelStore) => ({ filter: { ...state.filter, ...partial }, selectedIndex: 0 }));
         get().applyFilters();
     },
 
-    setFilter: (partial) => {
-        set((state) => ({ filter: { ...state.filter, ...partial }, selectedIndex: 0 }));
-        get().applyFilters();
-    },
+    setLoading: (loading: boolean) => set({ isLoading: loading }),
+    setLoadProgress: (progress: { loaded: number; total: number }) => set({ loadProgress: progress }),
+    setSelectedIndex: (index: number) => set({ selectedIndex: index }),
 
-    setLoading: (loading) => set({ isLoading: loading }),
-    setLoadProgress: (progress) => set({ loadProgress: progress }),
-    setSelectedIndex: (index) => set({ selectedIndex: index }),
-
-    moveSelection: (delta) => {
+    moveSelection: (delta: number) => {
         const { filteredChannels, selectedIndex } = get();
         const newIndex = Math.max(0, Math.min(filteredChannels.length - 1, selectedIndex + delta));
         set({ selectedIndex: newIndex });
     },
 
-    setFavorites: (ids) => set({ favorites: new Set(ids) }),
+    setFavorites: (ids: string[]) => set({ favorites: new Set(ids) }),
 
-    toggleFavorite: (id) => {
-        set((state) => {
+    toggleFavorite: (id: string) => {
+        set((state: ChannelStore) => {
             const next = new Set(state.favorites);
             next.has(id) ? next.delete(id) : next.add(id);
             return { favorites: next };
@@ -146,7 +130,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
         get().applyFilters();
     },
 
-    toggleFavoriteAsync: async (id) => {
+    toggleFavoriteAsync: async (id: string) => {
         // Assume electron API is available asynchronously
         const isFav = await window.electronAPI.favorites.toggle(id);
         get().toggleFavorite(id);
@@ -154,7 +138,7 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
     },
 
     applyFilters: () => {
-        const { channels, filter, fuseInstance, favorites, activeMainTab,
+        const { filter, fuseInstance, favorites, activeMainTab,
             liveChannels, movieChannels, seriesChannels } = get();
 
         // Source depends on active tab
@@ -165,8 +149,8 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
 
         // Search
         if (filter.search && fuseInstance) {
-            const rawResults = fuseInstance.search(filter.search).map((r) => r.item);
-            source = rawResults.filter((ch) => {
+            const rawResults = fuseInstance.search(filter.search).map((r: { item: Channel }) => r.item);
+            source = rawResults.filter((ch: Channel) => {
                 const ct = (ch as any).contentType;
                 if (activeMainTab === 'movie') return ct === 'movie';
                 if (activeMainTab === 'series') return ct === 'series';
@@ -174,26 +158,76 @@ export const useChannelStore = create<ChannelStore>((set, get) => ({
             });
         }
 
-        if (filter.group) source = source.filter((ch) => ch.group === filter.group);
-        if (filter.country) source = source.filter((ch) => ch.country === filter.country);
+        if (filter.group) source = source.filter((ch: Channel) => ch.group === filter.group);
+        if (filter.country) source = source.filter((ch: Channel) => ch.country === filter.country);
         if (filter.favorites) {
             if (activeMainTab === 'series') {
                 // If it's a series, check if the entire series is favorited
-                source = source.filter((ch) => {
+                source = source.filter((ch: Channel) => {
                     const info = parseSeriesName(ch.name);
                     const key = info ? info.showName : ch.name;
                     return favorites.has(`series_${key}`);
                 });
             } else {
-                source = source.filter((ch) => favorites.has(ch.id));
+                source = source.filter((ch: Channel) => favorites.has(ch.id));
             }
         }
 
         set({ filteredChannels: source });
     },
 
-    setActiveMainTab: (tab) => {
+    recomputeSafeChannels: () => {
+        const { channels } = get();
+        const { contentSettings } = useSettingsStore.getState();
+
+        let safeChannels = channels;
+
+        if (contentSettings.hiddenCategories.length > 0) {
+            safeChannels = safeChannels.filter((ch: Channel) => !contentSettings.hiddenCategories.includes(ch.group || ''));
+        }
+
+        if (contentSettings.hideAdult) {
+            const adultRegex = /(adult|xxx|18\+|porn|nsfw)/i;
+            safeChannels = safeChannels.filter((ch: Channel) => {
+                if (ch.group && adultRegex.test(ch.group)) return false;
+                if (ch.name && adultRegex.test(ch.name)) return false;
+                return true;
+            });
+        }
+
+        const fuse = buildFuse(safeChannels);
+        const { live, movie, series } = splitByContentType(safeChannels);
+        const sg = groupSeriesByShow(series as any);
+
+        set({
+            safeChannels,
+            fuseInstance: fuse,
+            groups: extractGroups(safeChannels),
+            allGroups: extractGroups(channels),
+            countries: extractCountries(safeChannels),
+            selectedIndex: 0,
+            liveChannels: live,
+            movieChannels: movie,
+            seriesChannels: series,
+            seriesGroups: sg,
+            liveCount: live.length,
+            movieCount: movie.length,
+            seriesCount: series.length,
+        });
+
+        get().applyFilters();
+    },
+
+    setActiveMainTab: (tab: MainTab) => {
         set({ activeMainTab: tab, filter: { search: '', group: null, country: null, favorites: false }, selectedIndex: 0 });
         get().applyFilters();
     },
 }));
+
+// Cross-store subscription: Recompute safe channels automatically when 
+// the user modifies the hidden categories or adult filter settings.
+useSettingsStore.subscribe((state, prevState) => {
+    if (state.contentSettings !== prevState.contentSettings) {
+        useChannelStore.getState().recomputeSafeChannels();
+    }
+});

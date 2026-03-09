@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { TitleBar } from './components/Common/TitleBar';
-import { Sidebar } from './components/Sidebar/Sidebar';
+import { UnifiedSidebar } from './components/Sidebar/UnifiedSidebar';
 import { PlayerContainer } from './components/Player/PlayerContainer';
 import { SettingsModal } from './components/Settings/SettingsModal';
 import { EPGGuide } from './components/EPG/EPGGuide';
+import { SpotlightSearch } from './components/Search/SpotlightSearch';
 import { useUiStore } from './store/uiStore';
 import { useSettingsStore } from './store/settingsStore';
 import { usePlayerStore } from './store/playerStore';
@@ -94,8 +95,10 @@ export default function App() {
 
             {/* Main Layout */}
             <div className="flex flex-1 w-full overflow-hidden relative">
-                {/* Sidebar */}
-                {!isFullscreen && <Sidebar />}
+                {/* Floating Dock & Flyout UI */}
+                {!isFullscreen && (
+                    <UnifiedSidebar />
+                )}
 
                 {/* Player */}
                 <PlayerContainer />
@@ -106,6 +109,9 @@ export default function App() {
                 {activeModal === 'settings' && <SettingsModal />}
                 {activeModal === 'epgGuide' && <EPGGuide />}
             </AnimatePresence>
+
+            {/* Global Search Overlay */}
+            <SpotlightSearch />
         </div>
     );
 }

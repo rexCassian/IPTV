@@ -28,6 +28,27 @@ export const PlayerSettings = memo(function PlayerSettings() {
         [updatePlayerSettings],
     );
 
+    const handleEngineOverrideChange = useCallback(
+        (e: React.ChangeEvent<HTMLSelectElement>) => {
+            updatePlayerSettings({ engineOverride: e.target.value as any });
+        },
+        [updatePlayerSettings],
+    );
+
+    const handleTimeSkipChange = useCallback(
+        (e: React.ChangeEvent<HTMLSelectElement>) => {
+            updatePlayerSettings({ timeSkipSecs: parseInt(e.target.value, 10) });
+        },
+        [updatePlayerSettings],
+    );
+
+    const handleAudioDelayChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            updatePlayerSettings({ audioDelay: parseInt(e.target.value, 10) });
+        },
+        [updatePlayerSettings],
+    );
+
     return (
         <div className="space-y-5">
             <div>
@@ -47,6 +68,23 @@ export const PlayerSettings = memo(function PlayerSettings() {
                     onChange={(e) => setVolume(parseInt(e.target.value, 10))}
                     className="w-full h-1.5 bg-dark-700 rounded-full appearance-none cursor-pointer accent-accent-500"
                 />
+            </div>
+
+            {/* Engine Override */}
+            <div>
+                <label className="block text-xs font-medium text-dark-300 mb-1.5">
+                    Varsayılan Oynatıcı Motoru
+                </label>
+                <select
+                    value={playerSettings.engineOverride}
+                    onChange={handleEngineOverrideChange}
+                    className="w-full px-3 py-2 bg-dark-800 border border-dark-700/50 rounded-lg text-sm text-white
+            focus:outline-none focus:border-accent-500/50"
+                >
+                    <option value="auto">Otomatik Mimariler</option>
+                    <option value="mpv">Daima MPV Motoru (Performans)</option>
+                    <option value="mpegts">Daima Tarayıcı HTML5 (Web uyumluluğu)</option>
+                </select>
             </div>
 
             {/* Hardware Decode */}
@@ -102,6 +140,41 @@ export const PlayerSettings = memo(function PlayerSettings() {
                     <option value="64MiB">64 MB (Yüksek kalite)</option>
                     <option value="128MiB">128 MB (4K içerik)</option>
                 </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                {/* Time Skip Interval */}
+                <div>
+                    <label className="block text-xs font-medium text-dark-300 mb-1.5">
+                        Sarma Süresi
+                    </label>
+                    <select
+                        value={playerSettings.timeSkipSecs}
+                        onChange={handleTimeSkipChange}
+                        className="w-full px-3 py-2 bg-dark-800 border border-dark-700/50 rounded-lg text-sm text-white focus:outline-none focus:border-accent-500/50"
+                    >
+                        <option value="5">5 Saniye</option>
+                        <option value="10">10 Saniye (Varsayılan)</option>
+                        <option value="15">15 Saniye</option>
+                        <option value="30">30 Saniye</option>
+                    </select>
+                </div>
+
+                {/* Audio Delay */}
+                <div>
+                    <label className="block text-xs font-medium text-dark-300 mb-1.5">
+                        Ses Gecikmesi (Senkron)
+                    </label>
+                    <div className="flex items-center bg-dark-800 border border-dark-700/50 rounded-lg pr-3">
+                        <input
+                            type="number"
+                            value={playerSettings.audioDelay}
+                            onChange={handleAudioDelayChange}
+                            className="w-full px-3 py-2 bg-transparent text-sm text-white focus:outline-none"
+                        />
+                        <span className="text-xs text-dark-400">ms</span>
+                    </div>
+                </div>
             </div>
 
             {/* Info */}
