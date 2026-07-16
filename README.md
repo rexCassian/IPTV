@@ -1,4 +1,4 @@
-# Coriolis IPTV
+# IPTV
 
 Production-ready IPTV desktop application for Windows with an emphasis on a premium user experience, modern aesthetics, and seamless streaming.
 
